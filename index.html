@@ -1,43 +1,188 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <link rel="stylesheet" href="/src/styles.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri App</title>
-    <script type="module" src="/src/main.ts" defer></script>
+    <title>Smart Clipboard Hub</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background-color: transparent !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        color: #f4f4f5;
+        user-select: none;
+        overflow: hidden;
+      }
+
+      /* Невидимая 10px полоска в самом верху экрана для поимки мыши */
+      .edge-trigger {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 10px;
+        z-index: 100;
+        cursor: pointer;
+      }
+
+      .hub-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background-color: #18181b;
+        border: 1px solid #3f3f46;
+        border-top: none;
+        border-radius: 0 0 12px 12px;
+        padding: 14px;
+        height: 480px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+        overflow: hidden;
+        transform: translateY(-480px);
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .hub-container.expanded {
+        transform: translateY(0);
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      h2 {
+        font-size: 14px;
+        margin: 0;
+        color: #a1a1aa;
+        font-weight: 600;
+      }
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .btn-header {
+        background-color: #27272a;
+        color: #ef4444;
+        border: 1px solid #3f3f46;
+        padding: 4px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: background 0.2s, border-color 0.2s;
+      }
+      .btn-header:hover {
+        background-color: #3f3f46;
+        border-color: #ef4444;
+      }
+      .btn-close {
+        color: #a1a1aa;
+        padding: 4px 8px;
+      }
+      .btn-close:hover {
+        color: #f4f4f5;
+      }
+      .clipboard-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: 360px;
+        overflow-y: auto;
+      }
+      .clipboard-list::-webkit-scrollbar {
+        width: 6px;
+      }
+      .clipboard-list::-webkit-scrollbar-thumb {
+        background: #3f3f46;
+        border-radius: 3px;
+      }
+      .clipboard-item {
+        background-color: #27272a;
+        padding: 10px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        border: 1px solid #3f3f46;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+      .clipboard-item.pinned {
+        border-color: #f59e0b;
+        background-color: #1f1d17;
+      }
+      .content-text {
+        flex-grow: 1;
+        word-break: break-all;
+        color: #e4e4e7;
+        line-height: 1.4;
+      }
+      .actions {
+        display: flex;
+        gap: 4px;
+      }
+      .action-btn {
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        font-size: 14px;
+        opacity: 0.7;
+      }
+      .action-btn:hover {
+        opacity: 1;
+        background-color: #3f3f46;
+      }
+      .trigger-handle {
+        margin-top: auto;
+        text-align: center;
+        padding-top: 8px;
+        padding-bottom: 4px;
+      }
+      .handle-bar {
+        width: 40px;
+        height: 4px;
+        background-color: #52525b;
+        border-radius: 2px;
+        margin: 0 auto;
+      }
+    </style>
   </head>
-
   <body>
-    <main class="container">
-      <h1>Welcome to Tauri</h1>
+    <div id="edge-trigger" class="edge-trigger"></div>
 
-      <div class="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/src/assets/vite.svg" class="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img
-            src="/src/assets/tauri.svg"
-            class="logo tauri"
-            alt="Tauri logo"
-          />
-        </a>
-        <a href="https://www.typescriptlang.org/docs" target="_blank">
-          <img
-            src="/src/assets/typescript.svg"
-            class="logo typescript"
-            alt="typescript logo"
-          />
-        </a>
+    <div id="hub-container" class="hub-container">
+      <div class="header">
+        <h2>История буфера</h2>
+        <div class="header-actions">
+          <button id="clear-btn" class="btn-header">Очистить всё</button>
+          <button id="close-btn" class="btn-header btn-close" title="Свернуть" onclick="window.collapseHub()">✕</button>
+        </div>
       </div>
-      <p>Click on the Tauri logo to learn more about the framework</p>
 
-      <form class="row" id="greet-form">
-        <input id="greet-input" placeholder="Enter a name..." />
-        <button type="submit">Greet</button>
-      </form>
-      <p id="greet-msg"></p>
-    </main>
+      <ul id="history-list" class="clipboard-list">
+        <li class="clipboard-item" style="color: #a1a1aa;">Загрузка истории...</li>
+      </ul>
+
+      <div class="trigger-handle">
+        <div class="handle-bar"></div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
